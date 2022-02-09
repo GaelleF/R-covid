@@ -1,0 +1,55 @@
+---
+title: "COVID Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+library(ggplot2)
+# import données DREES : https://data.drees.solidarites-sante.gouv.fr/explore/?sort=modified&exclude.keyword=priv%C3%A9
+
+data <- read.table("covid-19-resultats-par-age-issus-des-appariements-entre-si-vic-si-dep-et-vac-si.csv", sep=";", header=TRUE)
+print(data)
+summary(data)
+# graphique
+# Grouped
+ggplot(data, aes(fill=data$vac_statut, y=data$HC, x=data$age)) + 
+    geom_bar(position="stack", stat="identity") #stack dodge
+#+ stat_summary(fun = "sum")
+```
+
+```{r}
+sum(data$HC)
+length(data)
+#colSums(data$HC)
+test <- aggregate(x= data, by=list(data$vac_statut, data$age), FUN="sum")
+test
+```
+```{r}
+# graph des 60-79 ans par mois
+
+data_60 <- data[data[,3] == "[60,79]",]
+data_60$monthly <-format(as.POSIXct(data_60$date), "%m/%y") #+year(data$date)
+print(data_60)
+ggplot(data_60, aes(fill=data_60$vac_statut, y=data_60$HC, x=data_60$monthly)) + 
+    geom_bar(position="stack", stat="identity")
+```
+
+
+
+
+
+
