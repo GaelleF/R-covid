@@ -18,17 +18,8 @@ When you save the notebook, an HTML file containing the code and output will be 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
 ```{r}
-library(ggplot2)
-# import données DREES : https://data.drees.solidarites-sante.gouv.fr/explore/?sort=modified&exclude.keyword=priv%C3%A9
 
-data <- read.table("covid-19-resultats-par-age-issus-des-appariements-entre-si-vic-si-dep-et-vac-si.csv", sep=";", header=TRUE)
-print(data)
-summary(data)
-# graphique
-# Grouped
-ggplot(data, aes(fill=data$vac_statut, y=data$HC, x=data$age)) + 
-    geom_bar(position="stack", stat="identity") #stack dodge
-#+ stat_summary(fun = "sum")
+
 ```
 
 ```{r}
@@ -49,7 +40,47 @@ ggplot(data_60, aes(fill=data_60$vac_statut, y=data_60$HC, x=data_60$monthly)) +
 ```
 
 
+```{r}
+# ACP
+#install.packages(c("Factoshiny","missMDA","FactoInvestigate"), dependencies=FALSE)
+install.packages("leaps")
+install.packages("chron")
+install.packages("FactoMineR")
+install.packages('Factoshiny')
+install.packages('mltools')
+install.packages('data.table')
+install.packages('caret')
+#install.packages("lme4", repos="http://cran.rstudio.com/",type = "source", dependencies=TRUE)
+#library(Rcmdr)
+library("FactoMineR")
+#install.packages("FactoMineR_2.4.tgz", type='source')
+#install.packages("LEAP_0.2.tgz", type='source')
+data_test <- data[,c('date', 'vac_statut', 'age', 'HC')]
 
+library(mltools)
+library(data.table)
+library(caret)
+data_test$timestamp <- as.numeric(as.POSIXct(data_test$date))
+data_test$age_mean<- ifelse(data_test[,'age']== '[0,19]', 10,
+                            ifelse(data_test[,'age']== '[20,39]',30, 
+                            ifelse(data_test[,'age']== '[40,59]',50, 
+                            ifelse(data_test[,'age']== '[60,79]',70, 85))))
+data
+print(data_test)
+data_test <- data_test[, c('timestamp','age_mean', 'HC', 'vac_statut')]
+#define one-hot encoding function
+dummy <- dummyVars(" ~ .", data=data_test)
+
+#perform one-hot encoding on data frame
+final_df <- data.frame(predict(dummy, newdata=data_test))
+
+#view final data frame
+final_df
+#newdata <- one_hot(as.data.table(data_test))
+print(newdata)
+PCA(final_df, scale.unit = TRUE, ncp = 5, graph = TRUE)
+MCA(data_test) #, scale.unit = TRUE, ncp = 5, graph = TRUE)
+```
 
 
 
