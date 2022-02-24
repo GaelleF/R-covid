@@ -3,32 +3,34 @@ title: "COVID Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+Etude COVID à partir des données agrégées de la DREES
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
 
-```{r}
-plot(cars)
-```
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+## import et graphiques
 
 ```{r}
+library(ggplot2)
+# import données DREES : https://data.drees.solidarites-sante.gouv.fr/explore/?sort=modified&exclude.keyword=priv%C3%A9
 
+data <- read.table("covid-19-resultats-par-age-issus-des-appariements-entre-si-vic-si-dep-et-vac-si.csv", sep=";", header=TRUE)
+print(data)
+summary(data)
 
+ggplot(data, aes(fill=data$vac_statut, y=data$HC, x=data$age)) + 
+    geom_bar(position="stack", stat="identity") #stack dodge
+# export graphique
+jpeg("rplot.jpg")
+ggplot(data, aes(fill=data$vac_statut, y=data$HC, x=data$age)) + 
+    geom_bar(position="stack", stat="identity") #stack dodge
+dev.off()
 ```
 
 ```{r}
 sum(data$HC)
 length(data)
-#colSums(data$HC)
-test <- aggregate(x= data, by=list(data$vac_statut, data$age), FUN="sum")
-test
 ```
+## graph des 60-79 ans par mois
+
 ```{r}
 # graph des 60-79 ans par mois
 
@@ -38,36 +40,41 @@ print(data_60)
 ggplot(data_60, aes(fill=data_60$vac_statut, y=data_60$HC, x=data_60$monthly)) + 
     geom_bar(position="stack", stat="identity")
 ```
+## PCA sur les données agrégées
 
+nb_PCR : Nombre de tests PCR prélevés
+nb_PCR_sympt : Nombre de tests PCR avec symptôme prélevés
+nb_PCR+_sympt : Nombre de tests PCR positifs avec symptôme prélevés
+nb_PCR+ : Nombre de tests PCR positifs prélevés
+HC : Nombre d'entrées de patients en hospitalisation conventionnelle avec Covid-19
+HC_PCR+ : Nombre d'entrées de patients en hospitalisation conventionnelle avec Covid-19 pour lesquelles un test PCR positif a été identifié
+SC : Nombre d'entrées de patients en soins critiques avec Covid-19
+SC_PCR+ : Nombre d'entrées de patients en soins critiques avec Covid-19 pour lesquels un test PCR positif a été identifié
+DC : Nombre de décès hospitaliers avec Covid-19
+DC_PCR+ : Nombre de décès hospitaliers avec Covid-19 pour lesquels un test PCR positif a été identifié
+effectif : Population résidente selon statut vaccinal
 
 ```{r}
-# ACP
-#install.packages(c("Factoshiny","missMDA","FactoInvestigate"), dependencies=FALSE)
-install.packages("leaps")
-install.packages("chron")
-install.packages("FactoMineR")
-install.packages('Factoshiny')
-install.packages('mltools')
-install.packages('data.table')
-install.packages('caret')
-#install.packages("lme4", repos="http://cran.rstudio.com/",type = "source", dependencies=TRUE)
-#library(Rcmdr)
-library("FactoMineR")
-#install.packages("FactoMineR_2.4.tgz", type='source')
-#install.packages("LEAP_0.2.tgz", type='source')
-data_test <- data[,c('date', 'vac_statut', 'age', 'HC')]
 
+install.packages("FactoMineR")
+
+library("FactoMineR")
 library(mltools)
 library(data.table)
 library(caret)
+
+data_test <- data[,c('date', 'vac_statut', 'age', 'HC', 'SC', 'DC','effectif')]
+data_test$HC_rate=data_test$HC/data_test$effectif
+data_test$SC_rate=data_test$SC/data_test$effectif
+data_test$DC_rate=data_test$DC/data_test$effectif
+data_test
 data_test$timestamp <- as.numeric(as.POSIXct(data_test$date))
 data_test$age_mean<- ifelse(data_test[,'age']== '[0,19]', 10,
                             ifelse(data_test[,'age']== '[20,39]',30, 
                             ifelse(data_test[,'age']== '[40,59]',50, 
                             ifelse(data_test[,'age']== '[60,79]',70, 85))))
-data
 print(data_test)
-data_test <- data_test[, c('timestamp','age_mean', 'HC', 'vac_statut')]
+data_test <- data_test[, c('timestamp','age_mean', 'vac_statut', 'HC_rate','SC_rate', 'DC_rate')]
 #define one-hot encoding function
 dummy <- dummyVars(" ~ .", data=data_test)
 
@@ -76,8 +83,7 @@ final_df <- data.frame(predict(dummy, newdata=data_test))
 
 #view final data frame
 final_df
-#newdata <- one_hot(as.data.table(data_test))
-print(newdata)
+
 PCA(final_df, scale.unit = TRUE, ncp = 5, graph = TRUE)
 MCA(data_test) #, scale.unit = TRUE, ncp = 5, graph = TRUE)
 ```
